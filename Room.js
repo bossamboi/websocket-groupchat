@@ -36,7 +36,7 @@ class Room {
 
   constructor(roomName) {
     this.name = roomName;
-    this.members = new Set();
+    this.members = new Set(); // holds instance of ChatUser
   }
 
   /** Handle member joining a room.
@@ -63,8 +63,26 @@ class Room {
    * */
 
   broadcast(data) {
-    for (let member of this.members) {
-      member.send(JSON.stringify(data));
+    if (data.type === "get-joke") {
+      for (let member of this.members) {
+        if (member.name === data.member) {
+          member.send(JSON.stringify(data));
+          break;
+        }
+      }
+    } else if (data.type === "members") {
+      data.members = Array.from(this.members).map((member) => member.name);
+
+      for (let member of this.members) {
+        if (member.name === data.member) {
+          member.send(JSON.stringify(data));
+          break;
+        }
+      }
+    } else {
+      for (let member of this.members) {
+        member.send(JSON.stringify(data));
+      }
     }
   }
 }
