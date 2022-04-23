@@ -8,110 +8,122 @@ const Room = require("./Room");
 /** ChatUser is a individual connection from client -> server to chat. */
 
 class ChatUser {
-  /** Make chat user: store connection-device, room.
-   *
-   * @param send {function} callback to send message to this user
-   * @param room {Room} room user will be in
-   * */
+	/** Make chat user: store connection-device, room.
+	 *
+	 * @param send {function} callback to send message to this user
+	 * @param room {Room} room user will be in
+	 * */
 
-  constructor(send, roomName) {
-    this._send = send; // "send" function for this user
-    this.room = Room.get(roomName); // room user will be in
-    this.name = null; // becomes the username of the visitor
+	constructor(send, roomName) {
+		this._send = send; // "send" function for this user
+		this.room = Room.get(roomName); // room user will be in
+		this.name = null; // becomes the username of the visitor
 
-    console.log(`created chat in ${this.room.name}`);
-  }
+		console.log(`created chat in ${this.room.name}`);
+	}
 
-  /** Send msgs to this client using underlying connection-send-function.
-   *
-   * @param data {string} message to send
-   * */
+	/** Send msgs to this client using underlying connection-send-function.
+	 *
+	 * @param data {string} message to send
+	 * */
 
-  send(data) {
-    try {
-      this._send(data);
-    } catch {
-      // If trying to send to a user fails, ignore it
-    }
-  }
+	send(data) {
+		try {
+			this._send(data);
+		} catch {
+			// If trying to send to a user fails, ignore it
+		}
+	}
 
-  /** Handle joining: add to room members, announce join.
-   *
-   * @param name {string} name to use in room
-   * */
+	/** Handle joining: add to room members, announce join.
+	 *
+	 * @param name {string} name to use in room
+	 * */
 
-  handleJoin(name) {
-    this.name = name;
-    this.room.join(this);
-    this.room.broadcast({
-      type: "note",
-      text: `${this.name} joined "${this.room.name}".`,
-    });
-  }
+	handleJoin(name) {
+		this.name = name;
+		this.room.join(this);
+		this.room.broadcast({
+			type: "note",
+			text: `${this.name} joined "${this.room.name}".`,
+		});
+	}
 
-  /** Handle a chat: broadcast to room.
-   *
-   * @param text {string} message to send
-   * */
+	/** Handle a chat: broadcast to room.
+	 *
+	 * @param text {string} message to send
+	 * */
 
-  handleChat(text) {
-    this.room.broadcast({
-      name: this.name,
-      type: "chat",
-      text: text,
-    });
-  }
+	handleChat(text) {
+		this.room.broadcast({
+			name: this.name,
+			type: "chat",
+			text: text,
+		});
+	}
 
-  /** Handles a joke: does not broadcast to room. */
+	/** Handles a joke: does not broadcast to room. */
 
-  handleJoke() {
-    this.room.broadcast({
-      name: "Joker",
-      type: "get-joke",
-      text: "Hahahaha so funny!",
-      member: this.name,
-    });
-  }
+	handleJoke() {
+		this.room.broadcast({
+			name: "Joker",
+			type: "get-joke",
+			text: "Hahahaha so funny!",
+			member: this.name,
+		});
+	}
 
-  /** Handles getting all members: does not broadcast to room. */
+	/** Handles getting all members: does not broadcast to room. */
 
-  handleMembers() {
-    this.room.broadcast({
-      name: "Server",
-      type: "members",
-      member: this.name,
-    });
-  }
+	handleMembers() {
+		this.room.broadcast({
+			name: "Server",
+			type: "members",
+			member: this.name,
+		});
+	}
 
-  /** Handle messages from client:
-   *
-   * @param jsonData {string} raw message data
-   *
-   * @example<code>
-   * - {type: "join", name: username} : join
-   * - {type: "chat", text: msg }     : chat
-   * </code>
-   */
+	/** Handles private message: does not broadcast to room. */
 
-  handleMessage(jsonData) {
-    let msg = JSON.parse(jsonData);
+	handlePriv(text, toUser) {
+		this.room.broadcast({
+			name: this.name,
+			type: "priv",
+			toUser,
+			text,
+		});
+	}
 
-    if (msg.type === "join") this.handleJoin(msg.name);
-    else if (msg.type === "chat") this.handleChat(msg.text);
-    else if (msg.type === "get-joke") this.handleJoke();
-    else if (msg.type === "members") this.handleMembers();
-    else throw new Error(`bad message: ${msg.type}`);
-  }
+	/** Handle messages from client:
+	 *
+	 * @param jsonData {string} raw message data
+	 *
+	 * @example<code>
+	 * - {type: "join", name: username} : join
+	 * - {type: "chat", text: msg }     : chat
+	 * </code>
+	 */
 
-  /** Connection was closed: leave room, announce exit to others. */
+	handleMessage(jsonData) {
+		let msg = JSON.parse(jsonData);
 
-  handleClose() {
-    this.room.leave(this);
-    this.room.broadcast({
-      type: "note",
-      text: `${this.name} left ${this.room.name}.`,
-    });
-  }
+		if (msg.type === "join") this.handleJoin(msg.name);
+		else if (msg.type === "chat") this.handleChat(msg.text);
+		else if (msg.type === "get-joke") this.handleJoke();
+		else if (msg.type === "members") this.handleMembers();
+		else if (msg.type === "priv") this.handlePriv(msg.text, msg.toUser);
+		else throw new Error(`bad message: ${msg.type}`);
+	}
+
+	/** Connection was closed: leave room, announce exit to others. */
+
+	handleClose() {
+		this.room.leave(this);
+		this.room.broadcast({
+			type: "note",
+			text: `${this.name} left ${this.room.name}.`,
+		});
+	}
 }
 
 module.exports = ChatUser;

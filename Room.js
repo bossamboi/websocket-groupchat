@@ -11,80 +11,86 @@ const rooms = new Map();
  */
 
 class Room {
-  /** Get room by that name, creating if nonexistent.
-   * <p>
-   * This uses a programming pattern often called a "registry" ---
-   * users of this class only need to .get to find a room; they don't
-   * need to know about the `rooms` variable that holds the rooms. To
-   * them, the Room class manages all of this stuff for them.
-   *
-   * @param roomName {string} room to get
-   **/
+	/** Get room by that name, creating if nonexistent.
+	 * <p>
+	 * This uses a programming pattern often called a "registry" ---
+	 * users of this class only need to .get to find a room; they don't
+	 * need to know about the `rooms` variable that holds the rooms. To
+	 * them, the Room class manages all of this stuff for them.
+	 *
+	 * @param roomName {string} room to get
+	 **/
 
-  static get(roomName) {
-    if (!rooms.has(roomName)) {
-      rooms.set(roomName, new Room(roomName));
-    }
+	static get(roomName) {
+		if (!rooms.has(roomName)) {
+			rooms.set(roomName, new Room(roomName));
+		}
 
-    return rooms.get(roomName);
-  }
+		return rooms.get(roomName);
+	}
 
-  /** Make a new room, starting with empty set of listeners.
-   *
-   * @param roomName {string} room name for new room
-   * */
+	/** Make a new room, starting with empty set of listeners.
+	 *
+	 * @param roomName {string} room name for new room
+	 * */
 
-  constructor(roomName) {
-    this.name = roomName;
-    this.members = new Set(); // holds instance of ChatUser
-  }
+	constructor(roomName) {
+		this.name = roomName;
+		this.members = new Set(); // holds instance of ChatUser
+	}
 
-  /** Handle member joining a room.
-   *
-   * @param member {ChatUser} joining member
-   * */
+	/** Handle member joining a room.
+	 *
+	 * @param member {ChatUser} joining member
+	 * */
 
-  join(member) {
-    this.members.add(member);
-  }
+	join(member) {
+		this.members.add(member);
+	}
 
-  /** Handle member leaving a room.
-   *
-   * @param member {ChatUser} leaving member
-   * */
+	/** Handle member leaving a room.
+	 *
+	 * @param member {ChatUser} leaving member
+	 * */
 
-  leave(member) {
-    this.members.delete(member);
-  }
+	leave(member) {
+		this.members.delete(member);
+	}
 
-  /** Send message to all members in a room.
-   *
-   * @param data {string} message to send
-   * */
+	/** Send message to all members in a room.
+	 *
+	 * @param data {string} message to send
+	 * */
 
-  broadcast(data) {
-    if (data.type === "get-joke") {
-      for (let member of this.members) {
-        if (member.name === data.member) {
-          member.send(JSON.stringify(data));
-          break;
-        }
-      }
-    } else if (data.type === "members") {
-      data.members = Array.from(this.members).map((member) => member.name);
+	broadcast(data) {
+		if (data.type === "get-joke") {
+			for (let member of this.members) {
+				if (member.name === data.member) {
+					member.send(JSON.stringify(data));
+					break;
+				}
+			}
+		} else if (data.type === "members") {
+			data.members = Array.from(this.members).map((member) => member.name);
 
-      for (let member of this.members) {
-        if (member.name === data.member) {
-          member.send(JSON.stringify(data));
-          break;
-        }
-      }
-    } else {
-      for (let member of this.members) {
-        member.send(JSON.stringify(data));
-      }
-    }
-  }
+			for (let member of this.members) {
+				if (member.name === data.member) {
+					member.send(JSON.stringify(data));
+					break;
+				}
+			}
+		} else if (data.type === "priv") {
+			for (let member of this.members) {
+				if (member.name === data.toUser || member.name === data.name) {
+					member.send(JSON.stringify(data));
+				}
+			}
+		} else {
+			for (let member of this.members) {
+				member.send(JSON.stringify(data));
+			}
+		}
+	}
 }
 
 module.exports = Room;
